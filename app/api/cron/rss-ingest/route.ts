@@ -33,7 +33,12 @@ import { runRssIngestPipeline } from '@/lib/rss/ingest-pipeline';
  * dynamic="force-dynamic" olarak işaretlenmiştir.
  */
 
-export const maxDuration = 120;
+// Not: Vercel Hobby (ücretsiz) planında serverless fonksiyonların gerçek
+// çalışma süresi limiti 60 saniyedir; 120 belirtmek Pro plan gerektirir ve
+// canlı ortamda FUNCTION_INVOCATION_TIMEOUT (504) hatasına yol açtığı
+// doğrulandı. Pipeline da (lib/rss/ingest-pipeline.ts, MAX_ITEMS_PER_RUN)
+// bu süreye sığacak şekilde öğe sayısını sınırlar.
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {

@@ -46,6 +46,20 @@ export interface RssIngestSummary {
 const CONCURRENCY_LIMIT = 3;
 
 /**
+ * Bir pipeline çalıştırmasında en fazla işlenecek öğe sayısı.
+ *
+ * Vercel Hobby (ücretsiz) planında serverless fonksiyonların gerçek çalışma
+ * süresi limiti, proje ayarlarında görünen değerden (functionDefaultTimeout)
+ * daha kısıtlayıcıdır — canlı ortamda 8 kaynağın TÜM öğelerini işlemeye
+ * çalışmak FUNCTION_INVOCATION_TIMEOUT (504) hatasına yol açtığı doğrulandı.
+ * Bu sınır, her çalıştırmada zaman bütçesine sığacak kadar öğe işleyip
+ * kalanını bir sonraki tetiklemeye (10 dakika sonra ya da manuel) bırakır.
+ * content_hash dedup katmanı sayesinde bir öğenin birden fazla çalıştırmada
+ * kısmen görülmesi güvenlidir — zaten işlenmiş bir öğe tekrar eklenmez.
+ */
+const MAX_ITEMS_PER_RUN = 12;
+
+/**
  * Bir haber başlığından benzersiz bir slug üretir. Aynı başlıktan
  * (veya çok benzer başlıklardan) doğan slug çakışmalarını önlemek için,
  * temel slug'ın sonuna içerik hash'inin ilk 8 karakterini ekler.
@@ -251,7 +265,14 @@ export async function runRssIngestPipeline(): Promise<RssIngestSummary> {
   let atlananMukerrerAnlamsalSayisi = 0;
   let hataSayisi = 0;
 
-  const batches = chunkArray(feedItems, CONCURRENCY_LIMIT);
+  // Zaman bütçesi aşımını önlemek için işlenecek öğe sayısını sınırla.
+  // En yeni öğeler önceliklidir; en yeni tarihli olanlar zaten dizinin
+  // başında olacak şekilde fetchMultipleRssFeeds sıralı döner varsayımıyla
+  // ilk MAX_ITEMS_PER_RUN öğe alınır.
+  const itemsToProcess = feedItems.slice(0, MAX_ITEMS_PER_RUN);
+  const atlananZamanButcesiSayisi = feedItems.length - itemsToProcess.length;
+
+  const batches = chunkArray(itemsToProcess, CONCURRENCY_LIMIT);
 
   for (const batch of batches) {
     const batchResults = await Promise.all(
@@ -287,9 +308,14 @@ export async function runRssIngestPipeline(): Promise<RssIngestSummary> {
     }),
   );
 
+  const zamanButcesiNotu =
+    atlananZamanButcesiSayisi > 0
+      ? ` ${atlananZamanButcesiSayisi} öğe zaman bütçesi sınırı nedeniyle bu çalıştırmada işlenmedi, sonraki tetiklemede işlenecek.`
+      : '';
+
   return {
     durum: 'tamamlandi',
-    mesaj: `RSS ingest pipeline tamamlandı: ${aktifKaynaklar.length} kaynak işlendi, ${feedItems.length} öğe çekildi, ${eklenenHaberSayisi} yeni haber eklendi, ${atlananMukerrerHashSayisi} mükerrer (hash) ve ${atlananMukerrerAnlamsalSayisi} mükerrer (anlamsal) öğe atlandı, ${hataSayisi} hata oluştu.`,
+    mesaj: `RSS ingest pipeline tamamlandı: ${aktifKaynaklar.length} kaynak işlendi, ${feedItems.length} öğe çekildi, ${itemsToProcess.length} öğe işlendi, ${eklenenHaberSayisi} yeni haber eklendi, ${atlananMukerrerHashSayisi} mükerrer (hash) ve ${atlananMukerrerAnlamsalSayisi} mükerrer (anlamsal) öğe atlandı, ${hataSayisi} hata oluştu.${zamanButcesiNotu}`,
     islenenKaynakSayisi: aktifKaynaklar.length,
     cekilenOgeSayisi: feedItems.length,
     eklenenHaberSayisi,
