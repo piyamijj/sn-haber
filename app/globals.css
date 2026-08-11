@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 240 5% 4%;
+  --foreground: 0 0% 96%;
+
+  --card: 240 4% 7%;
+  --card-foreground: 0 0% 96%;
+
+  --popover: 240 5% 7%;
+  --popover-foreground: 0 0% 96%;
+
+  --primary: 355 78% 47%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 240 4% 12%;
+  --secondary-foreground: 0 0% 92%;
+
+  --muted: 240 4% 12%;
+  --muted-foreground: 240 5% 65%;
+
+  --accent: 240 4% 15%;
+  --accent-foreground: 0 0% 96%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 355 78% 47%;
+
+  --radius: 0.75rem;
+
+  --market-up: 142 71% 45%;
+  --market-down: 0 84% 60%;
+  --market-flat: 240 5% 65%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar — dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #27272a;
+  border-radius: 8px;
+  border: 2px solid #09090b;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #3f3f46;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
+/* Panel texture — subtle noise + gradient for depth on flat dark panels */
+.panel-texture {
+  position: relative;
+  background-color: #111113;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(225, 29, 46, 0.08), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+}
+
+.panel-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Flash / market ticker marquee */
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+.ticker-viewport {
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+}
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: hsl(var(--destructive));
+  animation: pulse-live 1.6s ease-in-out infinite;
+}
+
+/* Skeleton loading shimmer for cards */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #18181b 0%, #27272a 50%, #18181b 100%);
+  background-size: 1400px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Reading typography for article body */
+.prose-sn {
+  color: hsl(var(--foreground) / 0.92);
+  line-height: 1.85;
+  font-size: 1.0625rem;
+}
+
+.prose-sn p {
+  margin-top: 1.25em;
+  margin-bottom: 1.25em;
+}
+
+.prose-sn h2,
+.prose-sn h3 {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+}
+
+.prose-sn a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--primary) / 0.4);
+}
+
+.prose-sn blockquote {
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 1rem;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
