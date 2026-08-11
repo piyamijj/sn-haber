@@ -91,7 +91,15 @@ export interface FlashNewsItem {
 }
 
 /** Piyasa ticker'ında gösterilen enstrüman sembolleri. */
-export type MarketSymbol = 'USDTRY' | 'EURTRY' | 'XAUTRY' | 'BTCUSD' | 'BIST100';
+export type MarketSymbol =
+  | 'USDTRY'
+  | 'EURTRY'
+  | 'GBPTRY'
+  | 'XAUTRY'
+  | 'XAGTRY'
+  | 'BTCUSD'
+  | 'ETHUSD'
+  | 'BIST100';
 
 export type MarketDirection = 'up' | 'down' | 'flat';
 

@@ -3,13 +3,31 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Clock, ImageOff } from 'lucide-react';
+import { Clock, Newspaper } from 'lucide-react';
 
-import type { NewsArticleListItem } from '@/types';
+import type { NewsArticleListItem, NewsCategory } from '@/types';
 import { NEWS_CATEGORY_LABELS_TR } from '@/types';
 import { formatRelativeTimeTr, cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+
+/**
+ * RSS kaynağından görsel gelmeyen haberler için kategoriye özel bir
+ * gradyan arka plan üretir — boş/kırık görünen bir ikon kutusu yerine
+ * markaya uygun, görsel olarak dolu bir yer tutucu sağlar.
+ */
+const CATEGORY_GRADIENTS: Record<NewsCategory, string> = {
+  gundem: 'from-red-950 via-oled-panel2 to-oled-panel2',
+  ekonomi: 'from-emerald-950 via-oled-panel2 to-oled-panel2',
+  dunya: 'from-blue-950 via-oled-panel2 to-oled-panel2',
+  spor: 'from-orange-950 via-oled-panel2 to-oled-panel2',
+  teknoloji: 'from-violet-950 via-oled-panel2 to-oled-panel2',
+  saglik: 'from-teal-950 via-oled-panel2 to-oled-panel2',
+  'kultur-sanat': 'from-pink-950 via-oled-panel2 to-oled-panel2',
+  magazin: 'from-fuchsia-950 via-oled-panel2 to-oled-panel2',
+  bilim: 'from-cyan-950 via-oled-panel2 to-oled-panel2',
+  yasam: 'from-amber-950 via-oled-panel2 to-oled-panel2',
+};
 
 interface NewsCardProps {
   article: NewsArticleListItem;
@@ -49,8 +67,17 @@ export function NewsCard({ article, className, index = 0 }: NewsCardProps) {
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <ImageOff className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+              <div
+                className={cn(
+                  'flex h-full w-full items-center justify-center bg-gradient-to-br',
+                  CATEGORY_GRADIENTS[article.category],
+                )}
+              >
+                <Newspaper
+                  className="h-9 w-9 text-foreground/25"
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                />
               </div>
             )}
 

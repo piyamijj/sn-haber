@@ -70,10 +70,10 @@ export default async function RootLayout({
   return (
     <html lang="tr" className="dark">
       <body
-        className={`${inter.variable} min-h-screen bg-oled font-sans text-foreground antialiased`}
+        className={`${inter.variable} min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-oled font-sans text-foreground antialiased`}
       >
         <SiteHeader flashItems={flashItems} />
-        <main className="min-h-[60vh]">{children}</main>
+        <main className="min-h-[60vh] w-full max-w-[100vw] overflow-x-hidden">{children}</main>
         <SiteFooter />
         <FloatingChatbot />
       </body>

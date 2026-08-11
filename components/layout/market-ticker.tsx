@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 import type { MarketQuote } from '@/types';
@@ -27,11 +28,14 @@ function getDirectionVisual(direction: MarketQuote['direction']) {
  * biçimlendirir (BTC ve BIST100 farklı ondalık gösterim gerektirir).
  */
 function formatQuotePrice(quote: MarketQuote): string {
-  if (quote.symbol === 'BTCUSD') {
+  if (quote.symbol === 'BTCUSD' || quote.symbol === 'ETHUSD') {
     return `$${formatNumberTr(quote.price, 0)}`;
   }
   if (quote.symbol === 'BIST100') {
     return formatNumberTr(quote.price, 2);
+  }
+  if (quote.symbol === 'XAUTRY' || quote.symbol === 'XAGTRY') {
+    return `${formatNumberTr(quote.price, 2)} ₺`;
   }
   return `${formatNumberTr(quote.price, 4)} ₺`;
 }
@@ -102,7 +106,17 @@ export function MarketTicker() {
 
   return (
     <div className="ticker-viewport border-b border-oled-border bg-oled px-3 py-2">
-      <div className="ticker-track">
+      <motion.div
+        className="flex items-center whitespace-nowrap"
+        animate={{ x: ['0%', '-50%'] }}
+        transition={{
+          duration: Math.max(30, quotes.length * 8),
+          ease: 'linear',
+          repeat: Infinity,
+        }}
+        whileHover={{ transition: { duration: 0 } }}
+        style={{ willChange: 'transform' }}
+      >
         {loopQuotes.map((quote, index) => {
           const { Icon, colorClass } = getDirectionVisual(quote.direction);
           const changeSign = quote.changePercent > 0 ? '+' : '';
@@ -122,7 +136,7 @@ export function MarketTicker() {
             </div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }

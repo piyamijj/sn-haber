@@ -15,16 +15,19 @@ const rssParser: Parser<
     link?: string;
     contentSnippet?: string;
     content?: string;
+    'content:encoded'?: string;
     isoDate?: string;
     pubDate?: string;
     enclosure?: { url?: string };
     'media:content'?: { $?: { url?: string } };
+    'media:thumbnail'?: { $?: { url?: string } };
   }
 > = new Parser({
   customFields: {
     item: [
       ['media:content', 'media:content'],
       ['media:thumbnail', 'media:thumbnail'],
+      ['content:encoded', 'content:encoded'],
     ],
   },
   timeout: 15000,
@@ -87,6 +90,7 @@ function resolveImageUrl(item: {
   'media:thumbnail'?: { $?: { url?: string } };
   content?: string;
   contentSnippet?: string;
+  'content:encoded'?: string;
 }): string | null {
   if (item.enclosure?.url) {
     return item.enclosure.url;
@@ -105,6 +109,13 @@ function resolveImageUrl(item: {
   const fromContent = extractImageFromContent(item.content);
   if (fromContent) {
     return fromContent;
+  }
+
+  // Bazı kaynaklar (ör. WordPress tabanlı siteler) görseli sadece
+  // content:encoded (tam HTML gövdesi) alanında taşır.
+  const fromEncodedContent = extractImageFromContent(item['content:encoded']);
+  if (fromEncodedContent) {
+    return fromEncodedContent;
   }
 
   return null;

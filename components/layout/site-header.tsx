@@ -35,8 +35,8 @@ export function SiteHeader({ flashItems }: SiteHeaderProps) {
       <FlashTicker items={flashItems} />
       <MarketTicker />
 
-      <header className="border-b border-oled-border bg-oled/95 backdrop-blur supports-[backdrop-filter]:bg-oled/80">
-        <div className="container flex h-16 items-center justify-between gap-4">
+      <header className="w-full overflow-hidden border-b border-oled-border bg-oled/95 backdrop-blur supports-[backdrop-filter]:bg-oled/80">
+        <div className="container flex h-16 max-w-full items-center justify-between gap-4">
           <Link href="/" className="flex shrink-0 items-center gap-1.5">
             <span className="text-2xl font-black tracking-tight text-brand">SN</span>
             <span className="text-2xl font-black tracking-tight text-foreground">Haber</span>
@@ -44,9 +44,9 @@ export function SiteHeader({ flashItems }: SiteHeaderProps) {
 
           <nav
             aria-label="Kategori navigasyonu"
-            className="ticker-viewport flex-1 overflow-x-auto"
+            className="hide-scrollbar min-w-0 flex-1 overflow-x-auto"
           >
-            <ul className="flex items-center gap-1 whitespace-nowrap">
+            <ul className="flex w-max items-center gap-1 whitespace-nowrap">
               {CATEGORY_ORDER.map((category) => (
                 <li key={category}>
                   <Link
