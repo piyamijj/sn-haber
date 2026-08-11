@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { MarketQuote } from '@/types';
 import { formatNumberTr, cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -49,6 +50,9 @@ export function MarketTicker() {
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  // Mobilde whileHover'a bağlı durdurma davranışı dokunma sonrası kalıcı
+  // olarak takılı kalabiliyordu (bkz. flash-ticker.tsx aynı düzeltme).
+  const isCoarsePointer = useCoarsePointer();
 
   useEffect(() => {
     let isMounted = true;
@@ -110,11 +114,11 @@ export function MarketTicker() {
         className="flex items-center whitespace-nowrap"
         animate={{ x: ['0%', '-50%'] }}
         transition={{
-          duration: Math.max(30, quotes.length * 8),
+          duration: Math.max(15, quotes.length * 4),
           ease: 'linear',
           repeat: Infinity,
         }}
-        whileHover={{ transition: { duration: 0 } }}
+        whileHover={isCoarsePointer ? undefined : { transition: { duration: 0 } }}
         style={{ willChange: 'transform' }}
       >
         {loopQuotes.map((quote, index) => {

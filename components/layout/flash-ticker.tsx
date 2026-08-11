@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 
 import type { FlashNewsItem } from '@/types';
 import { cn } from '@/lib/utils';
+import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 
 interface FlashTickerProps {
   items: FlashNewsItem[];
@@ -18,6 +19,13 @@ interface FlashTickerProps {
  * yer alır ve en yüksek öncelikli, güncel haberleri vurgular.
  */
 export function FlashTicker({ items, className }: FlashTickerProps) {
+  // Mobil/dokunmatik cihazlarda gerçek bir "mouseleave" olayı olmadığından,
+  // whileHover'a bağlı durdurma davranışı bir dokunma/kaydırma sonrası
+  // kalıcı olarak takılı kalabiliyordu — bant donmuş/aşırı yavaş
+  // görünüyordu ve tam turu asla tamamlamıyordu. Dokunmatik cihazlarda
+  // hover-durdurma tamamen devre dışı bırakılır.
+  const isCoarsePointer = useCoarsePointer();
+
   if (!items || items.length === 0) {
     return null;
   }
@@ -45,11 +53,11 @@ export function FlashTicker({ items, className }: FlashTickerProps) {
           className="flex items-center gap-10 whitespace-nowrap"
           animate={{ x: ['0%', '-50%'] }}
           transition={{
-            duration: Math.max(20, items.length * 6),
+            duration: Math.max(10, items.length * 3),
             ease: 'linear',
             repeat: Infinity,
           }}
-          whileHover={{ transition: { duration: 0 } }}
+          whileHover={isCoarsePointer ? undefined : { transition: { duration: 0 } }}
           style={{ willChange: 'transform' }}
         >
           {loopItems.map((item, index) => (
