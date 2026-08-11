@@ -26,8 +26,11 @@ export function getGeminiClient(): GoogleGenerativeAI {
   return geminiClient;
 }
 
-const GEMINI_ANALYSIS_MODEL = 'gemini-1.5-flash';
-const GEMINI_EMBEDDING_MODEL = 'text-embedding-004';
+// Not: 'gemini-1.5-flash' ve 'text-embedding-004' Google tarafından bu hesap
+// için artık sunulmuyor (canlı doğrulamada 404 döndü). Güncel model listesi
+// (ListModels) kontrol edilerek şu isimlerle değiştirildi:
+const GEMINI_ANALYSIS_MODEL = 'gemini-flash-latest';
+const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIMENSIONS = 768;
 
 const VALID_CATEGORIES: NewsCategory[] = [
@@ -211,8 +214,11 @@ export async function analyzeArticle(
 }
 
 /**
- * Verilen metin için Gemini'nin text-embedding-004 modeliyle 768
- * boyutlu bir embedding vektörü üretir.
+ * Verilen metin için Gemini'nin embedding modeliyle (gemini-embedding-001)
+ * 768 boyutlu bir embedding vektörü üretir. Model varsayılan olarak 3072
+ * boyut üretir; Supabase şemasındaki vector(768) sütunuyla eşleşmesi için
+ * outputDimensionality:768 parametresi açıkça belirtilir (canlı API
+ * doğrulamasında bu parametrenin gerçekten 768 değer döndürdüğü teyit edildi).
  *
  * Bu embedding iki amaçla kullanılır:
  *   1. RSS ingest pipeline'ında anlamsal mükerrer haber tespiti
@@ -225,13 +231,40 @@ export async function analyzeArticle(
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: GEMINI_EMBEDDING_MODEL });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY ortam değişkeni tanımlı olmalı.');
+    }
 
     const truncatedText = text.slice(0, 8000);
 
-    const result = await model.embedContent(truncatedText);
-    const embedding = result.embedding?.values;
+    // Not: @google/generative-ai SDK'sının bu projede kilitlenen sürümü
+    // (^0.15.0), embedContent çağrısında outputDimensionality parametresini
+    // desteklemiyor. Bu parametre, modelin varsayılan 3072 boyut yerine
+    // Supabase şemasındaki vector(768) sütunuyla eşleşen 768 boyutlu vektör
+    // üretmesi için ZORUNLU. Bu yüzden burada SDK'yı atlayıp doğrudan REST
+    // uç noktasına istek atılır — canlı ortamda 768 değerli bir dizi
+    // döndürdüğü doğrulanmıştır.
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: { parts: [{ text: truncatedText }] },
+          outputDimensionality: EMBEDDING_DIMENSIONS,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[Gemini] Embedding REST çağrısı başarısız (${response.status}): ${errorBody}`);
+      return [];
+    }
+
+    const data = (await response.json()) as { embedding?: { values?: number[] } };
+    const embedding = data.embedding?.values;
 
     if (!embedding || embedding.length === 0) {
       return [];
