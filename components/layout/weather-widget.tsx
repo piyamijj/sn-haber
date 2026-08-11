@@ -71,19 +71,31 @@ export function WeatherWidget({ className }: { className?: string }) {
       }
     }
 
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fetchWeatherFor(position.coords.latitude, position.coords.longitude);
-        },
-        () => {
-          // İzin reddedildi ya da konum alınamadı — sessizce İstanbul
-          // varsayılanına düş.
-          fetchWeatherFor();
-        },
-        { timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 10 * 60 * 1000 },
-      );
-    } else {
+    // navigator.geolocation.getCurrentPosition bazı kısıtlı/headless
+    // tarayıcı ortamlarında (izin API'si tamamen kapalıysa) callback'e
+    // düşmeden SENKRON olarak fırlatabilir (örn. SecurityError). Bu durum
+    // yakalanmazsa React render/effect hatası olarak yukarı fırlar ve en
+    // yakın error boundary'ye kadar tüm alt ağacı (bu widget'la aynı üst
+    // bileşende render edilen kardeşler dahil) çökertebilir. Bu yüzden
+    // çağrının etrafı mutlaka try/catch ile sarılmalı.
+    try {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            fetchWeatherFor(position.coords.latitude, position.coords.longitude);
+          },
+          () => {
+            // İzin reddedildi ya da konum alınamadı — sessizce İstanbul
+            // varsayılanına düş.
+            fetchWeatherFor();
+          },
+          { timeout: GEOLOCATION_TIMEOUT_MS, maximumAge: 10 * 60 * 1000 },
+        );
+      } else {
+        fetchWeatherFor();
+      }
+    } catch {
+      // Senkron fırlatma durumunda da sessizce İstanbul varsayılanına düş.
       fetchWeatherFor();
     }
 
