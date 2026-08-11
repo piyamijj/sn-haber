@@ -1,13 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 import type { MarketQuote } from '@/types';
 import { formatNumberTr, cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -50,9 +48,6 @@ export function MarketTicker() {
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  // Mobilde whileHover'a bağlı durdurma davranışı dokunma sonrası kalıcı
-  // olarak takılı kalabiliyordu (bkz. flash-ticker.tsx aynı düzeltme).
-  const isCoarsePointer = useCoarsePointer();
 
   useEffect(() => {
     let isMounted = true;
@@ -107,19 +102,15 @@ export function MarketTicker() {
 
   // Kesintisiz döngü hissi için kotasyon listesini iki kez tekrar ediyoruz.
   const loopQuotes = [...quotes, ...quotes];
+  // Süre saniye biriminde; önceki iki hız artırma turundan sonra toplamda
+  // ~%60 daha hızlı (8 enstrüman için ~18sn'de bir tam tur).
+  const durationSeconds = Math.max(8, quotes.length * 2.3);
 
   return (
     <div className="ticker-viewport border-b border-oled-border bg-oled px-3 py-2">
-      <motion.div
-        className="flex items-center whitespace-nowrap"
-        animate={{ x: ['0%', '-50%'] }}
-        transition={{
-          duration: Math.max(15, quotes.length * 4),
-          ease: 'linear',
-          repeat: Infinity,
-        }}
-        whileHover={isCoarsePointer ? undefined : { transition: { duration: 0 } }}
-        style={{ willChange: 'transform' }}
+      <div
+        className="marquee-track marquee-pause-on-hover"
+        style={{ '--marquee-duration': `${durationSeconds}s` } as CSSProperties}
       >
         {loopQuotes.map((quote, index) => {
           const { Icon, colorClass } = getDirectionVisual(quote.direction);
@@ -128,7 +119,7 @@ export function MarketTicker() {
           return (
             <div
               key={`${quote.symbol}-${index}`}
-              className="flex items-center gap-2 pr-8 text-sm"
+              className="flex shrink-0 items-center gap-2 pr-8 text-sm"
             >
               <span className="font-semibold text-foreground/90">{quote.label}</span>
               <span className="text-foreground/80">{formatQuotePrice(quote)}</span>
@@ -140,7 +131,7 @@ export function MarketTicker() {
             </div>
           );
         })}
-      </motion.div>
+      </div>
     </div>
   );
 }

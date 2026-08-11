@@ -113,6 +113,54 @@ body {
   -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
 }
 
+/*
+ * Kayan bant (marquee) animasyonu — saf CSS keyframe olarak tanımlanır.
+ *
+ * ÖNEMLİ (canlı ortamda tespit edilen sıçrama/reset hatası): Önceki
+ * Framer Motion tabanlı yaklaşım `animate={{ x: ['0%', '-50%'] }}`
+ * kullanıyordu. Bu, yüzde değerini animasyonun BAŞLADIĞI anda elementin
+ * o anki genişliğine göre hesaplayıp donduruyor. İçerik genişliği
+ * (webfont geç yüklenmesi, veri değişimi, yeniden ölçümleme vb.
+ * nedeniyle) animasyon sürerken değişirse, önceden hesaplanmış yüzde
+ * artık doğru sınırı işaret etmiyor ve bant bir kelimenin ortasında
+ * "sıçrıyormuş" gibi görünüyordu.
+ *
+ * Saf CSS `translateX(-50%)` keyframe'i tarayıcı tarafından her
+ * animasyon karesinde ELEMENTİN O ANKİ genişliğine göre yeniden
+ * hesaplanır (statik bir sayıya donmaz) — bu yüzden içerik genişliği
+ * ne zaman/ne şekilde değişse de sıçrama olmaz, geçiş her zaman
+ * kusursuz kalır. Süre, `--marquee-duration` CSS değişkeni ile
+ * bileşenden inline style olarak ayarlanır.
+ */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: marquee-scroll var(--marquee-duration, 30s) linear infinite;
+  will-change: transform;
+}
+
+.marquee-track:hover {
+  animation-play-state: running;
+}
+
+/* Dokunmatik cihazlarda hover-durdurma tamamen istenmediğinden bu sınıf
+   sadece kaba işaretçili (mouse) cihazlarda devreye girer. */
+@media (hover: hover) and (pointer: fine) {
+  .marquee-track.marquee-pause-on-hover:hover {
+    animation-play-state: paused;
+  }
+}
+
 /* Kategori navigasyonu gibi elle kaydırılan şeritlerde kaydırma çubuğunu
    görsel olarak gizler (fonksiyonu korur), taşma davranışını değiştirmez.
    -webkit-overflow-scrolling: touch, iOS Safari'de dokunmatik kaydırmanın

@@ -1,11 +1,10 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 
 import type { FlashNewsItem } from '@/types';
 import { cn } from '@/lib/utils';
-import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 
 interface FlashTickerProps {
   items: FlashNewsItem[];
@@ -14,24 +13,23 @@ interface FlashTickerProps {
 
 /**
  * Üstte kayan "son dakika" (flash) haber bandı.
- * Framer Motion ile sürekli, akıcı bir şekilde sağdan sola kayar;
- * üzerine gelindiğinde (hover) durur. Piyasa ticker'ının hemen üstünde
- * yer alır ve en yüksek öncelikli, güncel haberleri vurgular.
+ * Saf CSS keyframe animasyonuyla (bkz. globals.css .marquee-track)
+ * sürekli, akıcı bir şekilde sağdan sola kayar; sadece gerçek fare
+ * işaretçili cihazlarda üzerine gelindiğinde durur (dokunmatik
+ * cihazlarda hover-durdurma davranışı CSS media query ile zaten devre
+ * dışı bırakılmıştır). Piyasa ticker'ının hemen üstünde yer alır ve en
+ * yüksek öncelikli, güncel haberleri vurgular.
  */
 export function FlashTicker({ items, className }: FlashTickerProps) {
-  // Mobil/dokunmatik cihazlarda gerçek bir "mouseleave" olayı olmadığından,
-  // whileHover'a bağlı durdurma davranışı bir dokunma/kaydırma sonrası
-  // kalıcı olarak takılı kalabiliyordu — bant donmuş/aşırı yavaş
-  // görünüyordu ve tam turu asla tamamlamıyordu. Dokunmatik cihazlarda
-  // hover-durdurma tamamen devre dışı bırakılır.
-  const isCoarsePointer = useCoarsePointer();
-
   if (!items || items.length === 0) {
     return null;
   }
 
   // Kesintisiz döngü hissi için öğe listesini iki kez tekrar ediyoruz.
   const loopItems = [...items, ...items];
+  // Süre saniye biriminde; öğe sayısına göre ölçeklenir ama çok kısa/uzun
+  // olmaz. Önceki iki hız artırma turundan sonra toplamda ~%60 daha hızlı.
+  const durationSeconds = Math.max(8, items.length * 2.2);
 
   return (
     <div
@@ -49,22 +47,15 @@ export function FlashTicker({ items, className }: FlashTickerProps) {
       </div>
 
       <div className="ticker-viewport flex-1">
-        <motion.div
-          className="flex items-center gap-10 whitespace-nowrap"
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{
-            duration: Math.max(10, items.length * 3),
-            ease: 'linear',
-            repeat: Infinity,
-          }}
-          whileHover={isCoarsePointer ? undefined : { transition: { duration: 0 } }}
-          style={{ willChange: 'transform' }}
+        <div
+          className="marquee-track marquee-pause-on-hover gap-10"
+          style={{ '--marquee-duration': `${durationSeconds}s` } as CSSProperties}
         >
           {loopItems.map((item, index) => (
             <Link
               key={`${item.id}-${index}`}
               href={`/haber/${item.slug}`}
-              className="group flex items-center gap-2 text-sm text-foreground/90 transition-colors hover:text-primary"
+              className="group flex shrink-0 items-center gap-2 text-sm text-foreground/90 transition-colors hover:text-primary"
             >
               <span
                 className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
@@ -73,7 +64,7 @@ export function FlashTicker({ items, className }: FlashTickerProps) {
               <span className="group-hover:underline">{item.title}</span>
             </Link>
           ))}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
