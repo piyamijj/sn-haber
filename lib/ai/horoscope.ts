@@ -1,4 +1,8 @@
-import { getGeminiClient } from '@/lib/ai/gemini';
+import {
+  getGeminiClient,
+  isGeminiQuotaError,
+  markCurrentGeminiKeyAsExhausted,
+} from '@/lib/ai/gemini';
 import { ZODIAC_SIGN_ORDER, ZODIAC_SIGN_LABELS_TR, type ZodiacSign } from '@/types';
 
 const GEMINI_HOROSCOPE_MODEL = 'gemini-flash-lite-latest';
@@ -87,34 +91,51 @@ function parseHoroscopeResponse(rawResponse: string): Record<ZodiacSign, string>
  * analyzeArticle ile aynı "asla throw etme" prensibi).
  */
 export async function generateDailyHoroscopes(): Promise<Record<ZodiacSign, string>> {
-  try {
-    const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: GEMINI_HOROSCOPE_MODEL });
+  // Kota hatası alınırsa bir sonraki anahtarla EN FAZLA 1 kez tekrar denenir
+  // (bkz. lib/ai/gemini.ts markCurrentGeminiKeyAsExhausted).
+  const maxAttempts = 2;
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: HOROSCOPE_SYSTEM_PROMPT }],
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const client = getGeminiClient();
+      const model = client.getGenerativeModel({ model: GEMINI_HOROSCOPE_MODEL });
+
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: HOROSCOPE_SYSTEM_PROMPT }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
         },
-      ],
-      generationConfig: {
-        temperature: 0.9,
-        maxOutputTokens: 2000,
-        responseMimeType: 'application/json',
-      },
-    });
+      });
 
-    const rawResponse = result.response.text();
+      const rawResponse = result.response.text();
 
-    if (!rawResponse) {
+      if (!rawResponse) {
+        return buildFallbackHoroscopes();
+      }
+
+      return parseHoroscopeResponse(rawResponse);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'bilinmeyen hata';
+
+      if (isGeminiQuotaError(error) && attempt < maxAttempts) {
+        console.warn(
+          '[Gemini] Burç yorumu üretiminde kota/hız sınırı hatası, bir sonraki API anahtarıyla tekrar deneniyor.',
+        );
+        markCurrentGeminiKeyAsExhausted();
+        continue;
+      }
+
+      console.error(`[Gemini] Günlük burç yorumları üretilirken hata oluştu: ${errorMessage}`);
       return buildFallbackHoroscopes();
     }
-
-    return parseHoroscopeResponse(rawResponse);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'bilinmeyen hata';
-    console.error(`[Gemini] Günlük burç yorumları üretilirken hata oluştu: ${errorMessage}`);
-    return buildFallbackHoroscopes();
   }
+
+  return buildFallbackHoroscopes();
 }

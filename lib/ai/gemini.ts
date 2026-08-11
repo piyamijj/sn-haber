@@ -2,28 +2,88 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 import type { GeminiAnalysisResult, NewsCategory, AiVerificationStatus } from '@/types';
 
-let geminiClient: GoogleGenerativeAI | null = null;
-
 /**
- * Gemini istemcisini döndürür (tekil örnek).
- * Gemini Flash, detaylı analiz, doğrulama, kategorizasyon ve embedding
- * üretimi için kullanılır.
+ * Gemini API anahtarları — kota/hız sınırı hatası alındığında otomatik
+ * olarak bir sonrakine geçmek için bir LİSTE olarak tutulur (basit
+ * round-robin/fallback mekanizması).
+ *
+ * GEMINI_API_KEY: birincil anahtar (standart "AIzaSy..." formatı).
+ * GEMINI_API_KEY_2: isteğe bağlı ikincil anahtar. Tanımlıysa, birincil
+ * anahtarla yapılan bir çağrı kota/hız sınırı hatası (429 RESOURCE_EXHAUSTED
+ * veya benzeri) döndürdüğünde otomatik olarak buna geçilir. Google'ın
+ * standart "AIzaSy..." öneki DIŞINDA bir biçimde olsa da (örn. AI Studio'dan
+ * alınan farklı biçimli bir anahtar), canlı ortamda ?key= sorgu parametresi
+ * olarak GERÇEKTEN geçerli bir kimlik doğrulaması olduğu doğrulandığından
+ * (curl ile generateContent çağrısı 200 döndürdü) kabul edilir — format
+ * kontrolü yapılmaz, sadece API'nin kendisinin kabul edip etmediğine bakılır.
  */
-export function getGeminiClient(): GoogleGenerativeAI {
-  if (geminiClient) {
-    return geminiClient;
-  }
+const geminiClients = new Map<string, GoogleGenerativeAI>();
+let activeKeyIndex = 0;
 
-  const apiKey = process.env.GEMINI_API_KEY;
+function getGeminiApiKeys(): string[] {
+  const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_2].filter(
+    (key): key is string => Boolean(key && key.trim().length > 0),
+  );
 
-  if (!apiKey) {
+  if (keys.length === 0) {
     throw new Error(
       'Gemini istemcisi başlatılamadı: GEMINI_API_KEY ortam değişkeni tanımlı olmalı.',
     );
   }
 
-  geminiClient = new GoogleGenerativeAI(apiKey);
-  return geminiClient;
+  return keys;
+}
+
+/**
+ * Gemini istemcisini döndürür. Birden fazla anahtar tanımlıysa, en son
+ * kota/hız sınırı hatası alınan anahtarı atlayıp bir sonrakini kullanır
+ * (bkz. markCurrentGeminiKeyAsExhausted). Gemini Flash, detaylı analiz,
+ * doğrulama, kategorizasyon ve embedding üretimi için kullanılır.
+ */
+export function getGeminiClient(): GoogleGenerativeAI {
+  const keys = getGeminiApiKeys();
+  const currentKey = keys[activeKeyIndex % keys.length];
+
+  const cachedClient = geminiClients.get(currentKey);
+  if (cachedClient) {
+    return cachedClient;
+  }
+
+  const client = new GoogleGenerativeAI(currentKey);
+  geminiClients.set(currentKey, client);
+  return client;
+}
+
+/**
+ * Bir Gemini çağrısı kota/hız sınırı hatasıyla (429, RESOURCE_EXHAUSTED,
+ * "quota" içeren mesajlar) başarısız olduğunda çağrılır. Bir sonraki
+ * getGeminiClient() çağrısının SIRADAKI anahtara geçmesini sağlar.
+ * Tanımlı sadece 1 anahtar varsa hiçbir etkisi olmaz (döngü kendi
+ * üzerinde döner).
+ */
+export function markCurrentGeminiKeyAsExhausted(): void {
+  const keys = getGeminiApiKeys();
+  if (keys.length > 1) {
+    activeKeyIndex = (activeKeyIndex + 1) % keys.length;
+  }
+}
+
+/**
+ * Verilen hatanın Gemini'nin kota/hız sınırı hatası olup olmadığını
+ * tespit eder (429 durum kodu, "RESOURCE_EXHAUSTED" veya "quota" içeren
+ * mesajlar). Bu tespit edildiğinde çağıran taraf markCurrentGeminiKeyAsExhausted
+ * çağırıp isterse aynı isteği bir sonraki anahtarla tekrar deneyebilir.
+ */
+export function isGeminiQuotaError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('429') ||
+    message.includes('resource_exhausted') ||
+    message.includes('quota')
+  );
 }
 
 // Not: 'gemini-1.5-flash' ve 'text-embedding-004' Google tarafından bu hesap
@@ -185,50 +245,66 @@ export async function analyzeArticle(
   title: string,
   content: string,
 ): Promise<GeminiAnalysisResult> {
-  try {
-    const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: GEMINI_ANALYSIS_MODEL });
+  const truncatedContent = content.slice(0, 6000);
+  // Kota hatası alınırsa bir sonraki anahtarla EN FAZLA 1 kez tekrar denenir
+  // (bkz. markCurrentGeminiKeyAsExhausted) — bu yüzden en fazla 2 deneme.
+  const maxAttempts = 2;
 
-    const truncatedContent = content.slice(0, 6000);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const client = getGeminiClient();
+      const model = client.getGenerativeModel({ model: GEMINI_ANALYSIS_MODEL });
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `${ANALYSIS_SYSTEM_PROMPT}\n\nBaşlık: ${title}\n\nİçerik:\n${truncatedContent}`,
-            },
-          ],
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: `${ANALYSIS_SYSTEM_PROMPT}\n\nBaşlık: ${title}\n\nİçerik:\n${truncatedContent}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          // NOT: 'gemini-flash-latest' (gemini-3.6-flash) bir "thinking" modeli —
+          // maxOutputTokens iç muhakeme (thoughtsTokenCount) için harcanan token'ları
+          // da kapsar. 500 gibi düşük bir limit, modelin ~500 token'ı düşünmeye
+          // harcayıp gerçek JSON yanıtına hiç yer kalmamasına (finishReason:
+          // MAX_TOKENS, boş/kesik içerik) yol açıyordu — bu da JSON.parse
+          // hatasıyla her haberin sessizce "gundem" fallback kategorisine
+          // düşmesine sebep oluyordu (canlı doğrulamada tespit edildi). Bu yüzden
+          // limit, düşünme + gerçek çıktı için yeterli paya çıkarıldı.
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
         },
-      ],
-      generationConfig: {
-        temperature: 0.2,
-        // NOT: 'gemini-flash-latest' (gemini-3.6-flash) bir "thinking" modeli —
-        // maxOutputTokens iç muhakeme (thoughtsTokenCount) için harcanan token'ları
-        // da kapsar. 500 gibi düşük bir limit, modelin ~500 token'ı düşünmeye
-        // harcayıp gerçek JSON yanıtına hiç yer kalmamasına (finishReason:
-        // MAX_TOKENS, boş/kesik içerik) yol açıyordu — bu da JSON.parse
-        // hatasıyla her haberin sessizce "gundem" fallback kategorisine
-        // düşmesine sebep oluyordu (canlı doğrulamada tespit edildi). Bu yüzden
-        // limit, düşünme + gerçek çıktı için yeterli paya çıkarıldı.
-        maxOutputTokens: 2000,
-        responseMimeType: 'application/json',
-      },
-    });
+      });
 
-    const rawResponse = result.response.text();
+      const rawResponse = result.response.text();
 
-    if (!rawResponse) {
+      if (!rawResponse) {
+        return buildFallbackAnalysis();
+      }
+
+      return parseGeminiAnalysisResponse(rawResponse);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'bilinmeyen hata';
+
+      if (isGeminiQuotaError(error) && attempt < maxAttempts) {
+        console.warn(
+          `[Gemini] Kota/hız sınırı hatası alındı ("${title}"), bir sonraki API anahtarıyla tekrar deneniyor.`,
+        );
+        markCurrentGeminiKeyAsExhausted();
+        continue;
+      }
+
+      console.error(`[Gemini] Haber analiz edilirken hata oluştu ("${title}"): ${errorMessage}`);
       return buildFallbackAnalysis();
     }
-
-    return parseGeminiAnalysisResponse(rawResponse);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'bilinmeyen hata';
-    console.error(`[Gemini] Haber analiz edilirken hata oluştu ("${title}"): ${errorMessage}`);
-    return buildFallbackAnalysis();
   }
+
+  return buildFallbackAnalysis();
 }
 
 /**
@@ -248,56 +324,77 @@ export async function analyzeArticle(
  * sinyali olarak ele almalı, hata fırlatmamalıdır.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY ortam değişkeni tanımlı olmalı.');
-    }
+  const truncatedText = text.slice(0, 8000);
+  // Kota hatası alınırsa bir sonraki anahtarla EN FAZLA 1 kez tekrar denenir.
+  const maxAttempts = 2;
 
-    const truncatedText = text.slice(0, 8000);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const keys = getGeminiApiKeys();
+      const apiKey = keys[activeKeyIndex % keys.length];
 
-    // Not: @google/generative-ai SDK'sının bu projede kilitlenen sürümü
-    // (^0.15.0), embedContent çağrısında outputDimensionality parametresini
-    // desteklemiyor. Bu parametre, modelin varsayılan 3072 boyut yerine
-    // Supabase şemasındaki vector(768) sütunuyla eşleşen 768 boyutlu vektör
-    // üretmesi için ZORUNLU. Bu yüzden burada SDK'yı atlayıp doğrudan REST
-    // uç noktasına istek atılır — canlı ortamda 768 değerli bir dizi
-    // döndürdüğü doğrulanmıştır.
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: { parts: [{ text: truncatedText }] },
-          outputDimensionality: EMBEDDING_DIMENSIONS,
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`[Gemini] Embedding REST çağrısı başarısız (${response.status}): ${errorBody}`);
-      return [];
-    }
-
-    const data = (await response.json()) as { embedding?: { values?: number[] } };
-    const embedding = data.embedding?.values;
-
-    if (!embedding || embedding.length === 0) {
-      return [];
-    }
-
-    if (embedding.length !== EMBEDDING_DIMENSIONS) {
-      console.error(
-        `[Gemini] Beklenmeyen embedding boyutu: ${embedding.length} (beklenen: ${EMBEDDING_DIMENSIONS}).`,
+      // Not: @google/generative-ai SDK'sının bu projede kilitlenen sürümü
+      // (^0.15.0), embedContent çağrısında outputDimensionality parametresini
+      // desteklemiyor. Bu parametre, modelin varsayılan 3072 boyut yerine
+      // Supabase şemasındaki vector(768) sütunuyla eşleşen 768 boyutlu vektör
+      // üretmesi için ZORUNLU. Bu yüzden burada SDK'yı atlayıp doğrudan REST
+      // uç noktasına istek atılır — canlı ortamda 768 değerli bir dizi
+      // döndürdüğü doğrulanmıştır.
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_EMBEDDING_MODEL}:embedContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: { parts: [{ text: truncatedText }] },
+            outputDimensionality: EMBEDDING_DIMENSIONS,
+          }),
+        },
       );
-    }
 
-    return embedding;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'bilinmeyen hata';
-    console.error(`[Gemini] Embedding üretilirken hata oluştu: ${errorMessage}`);
-    return [];
+      if (!response.ok) {
+        const errorBody = await response.text();
+
+        if (response.status === 429 && attempt < maxAttempts) {
+          console.warn(
+            '[Gemini] Embedding çağrısında kota/hız sınırı hatası, bir sonraki API anahtarıyla tekrar deneniyor.',
+          );
+          markCurrentGeminiKeyAsExhausted();
+          continue;
+        }
+
+        console.error(
+          `[Gemini] Embedding REST çağrısı başarısız (${response.status}): ${errorBody}`,
+        );
+        return [];
+      }
+
+      const data = (await response.json()) as { embedding?: { values?: number[] } };
+      const embedding = data.embedding?.values;
+
+      if (!embedding || embedding.length === 0) {
+        return [];
+      }
+
+      if (embedding.length !== EMBEDDING_DIMENSIONS) {
+        console.error(
+          `[Gemini] Beklenmeyen embedding boyutu: ${embedding.length} (beklenen: ${EMBEDDING_DIMENSIONS}).`,
+        );
+      }
+
+      return embedding;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'bilinmeyen hata';
+
+      if (isGeminiQuotaError(error) && attempt < maxAttempts) {
+        markCurrentGeminiKeyAsExhausted();
+        continue;
+      }
+
+      console.error(`[Gemini] Embedding üretilirken hata oluştu: ${errorMessage}`);
+      return [];
+    }
   }
+
+  return [];
 }
