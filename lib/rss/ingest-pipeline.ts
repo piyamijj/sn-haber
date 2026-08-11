@@ -288,10 +288,30 @@ export async function runRssIngestPipeline(): Promise<RssIngestSummary> {
   let hataSayisi = 0;
 
   // Zaman bütçesi aşımını önlemek için işlenecek öğe sayısını sınırla.
-  // En yeni öğeler önceliklidir; en yeni tarihli olanlar zaten dizinin
-  // başında olacak şekilde fetchMultipleRssFeeds sıralı döner varsayımıyla
-  // ilk MAX_ITEMS_PER_RUN öğe alınır.
-  const itemsToProcess = feedItems.slice(0, MAX_ITEMS_PER_RUN);
+  //
+  // ÖNEMLİ (canlı ortamda tespit edilen kritik hata): feedItems dizisi,
+  // fetchMultipleRssFeeds içinde kaynaklar sırasıyla art arda eklendiği için
+  // (results.flat()), HİÇBİR ŞEKİLDE tarihe göre sıralı değildir — dizinin
+  // başı her zaman "aktifKaynaklar" listesindeki İLK kaynağın (örn. Anadolu
+  // Ajansı) en yeni öğeleriyle doluydu. Bu yüzden her çalıştırmada aynı ilk
+  // ~12 öğe işleniyordu; bunlar bir kez "seen" (content_hash) olarak
+  // işaretlendikten sonra sonraki her çalıştırmada mükerrer olarak atlanıyor
+  // ve dizinin devamındaki 3200+ öğeye (diğer 61 kaynağın TÜM içeriği dahil)
+  // ASLA sıra gelmiyordu. Sonuç: AA gibi kaynaklardan yeni haber neredeyse
+  // hiç eklenmiyordu, bu da AA görsel düzeltmesinin canlıda hiç
+  // gözlemlenememesinin de gerçek nedeniydi.
+  //
+  // Düzeltme: slice'tan önce TÜM öğeleri yayın tarihine (isoDate) göre en
+  // yeniden en eskiye sıralıyoruz. Böylece her çalıştırmada gerçekten en
+  // yeni 12 öğe -kaynak sırası ne olursa olsun- işlenir ve tüm kaynaklar
+  // zaman içinde adil şekilde işlenme şansı bulur. Tarihi olmayan öğeler
+  // sona atılır (en düşük öncelik).
+  const sortedFeedItems = [...feedItems].sort((a, b) => {
+    const aTime = a.isoDate ? new Date(a.isoDate).getTime() : 0;
+    const bTime = b.isoDate ? new Date(b.isoDate).getTime() : 0;
+    return bTime - aTime;
+  });
+  const itemsToProcess = sortedFeedItems.slice(0, MAX_ITEMS_PER_RUN);
   const atlananZamanButcesiSayisi = feedItems.length - itemsToProcess.length;
 
   const batches = chunkArray(itemsToProcess, CONCURRENCY_LIMIT);
