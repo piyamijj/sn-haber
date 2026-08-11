@@ -29,7 +29,17 @@ export function getGeminiClient(): GoogleGenerativeAI {
 // Not: 'gemini-1.5-flash' ve 'text-embedding-004' Google tarafından bu hesap
 // için artık sunulmuyor (canlı doğrulamada 404 döndü). Güncel model listesi
 // (ListModels) kontrol edilerek şu isimlerle değiştirildi:
-const GEMINI_ANALYSIS_MODEL = 'gemini-flash-latest';
+//
+// KRİTİK DÜZELTME: 'gemini-flash-latest' (gemini-3.6-flash) bir "thinking"
+// modeli — her çağrıda ~500 token'ı gizli iç muhakemeye (thoughtsTokenCount)
+// harcıyor ve free tier kotası çok düşük (günde 20 istek/model). Bu ikisi
+// birlikte, canlı ortamda her haberin analiz çağrısının ya JSON'u kesik
+// döndürmesine ya da kota hatası almasına, ikisinde de sessizce "gundem"
+// fallback kategorisine düşülmesine yol açtı (68 haberin TÜMÜ gundem'e
+// düşmüştü). 'gemini-flash-lite-latest' (gemini-3.5-flash-lite) thinking
+// harcamıyor, aynı JSON şemasını güvenilir şekilde üretiyor ve kotası bu
+// kullanım için yeterli — canlı doğrulamada teyit edildi.
+const GEMINI_ANALYSIS_MODEL = 'gemini-flash-lite-latest';
 const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 const EMBEDDING_DIMENSIONS = 768;
 
@@ -194,7 +204,15 @@ export async function analyzeArticle(
       ],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 500,
+        // NOT: 'gemini-flash-latest' (gemini-3.6-flash) bir "thinking" modeli —
+        // maxOutputTokens iç muhakeme (thoughtsTokenCount) için harcanan token'ları
+        // da kapsar. 500 gibi düşük bir limit, modelin ~500 token'ı düşünmeye
+        // harcayıp gerçek JSON yanıtına hiç yer kalmamasına (finishReason:
+        // MAX_TOKENS, boş/kesik içerik) yol açıyordu — bu da JSON.parse
+        // hatasıyla her haberin sessizce "gundem" fallback kategorisine
+        // düşmesine sebep oluyordu (canlı doğrulamada tespit edildi). Bu yüzden
+        // limit, düşünme + gerçek çıktı için yeterli paya çıkarıldı.
+        maxOutputTokens: 2000,
         responseMimeType: 'application/json',
       },
     });

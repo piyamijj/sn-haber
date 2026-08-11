@@ -3,7 +3,20 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Clock, Newspaper } from 'lucide-react';
+import {
+  Clock,
+  Newspaper,
+  TrendingUp,
+  Globe2,
+  Trophy,
+  Cpu,
+  HeartPulse,
+  Palette,
+  Sparkles,
+  FlaskConical,
+  Leaf,
+  type LucideIcon,
+} from 'lucide-react';
 
 import type { NewsArticleListItem, NewsCategory } from '@/types';
 import { NEWS_CATEGORY_LABELS_TR } from '@/types';
@@ -13,20 +26,65 @@ import { Badge } from '@/components/ui/badge';
 
 /**
  * RSS kaynağından görsel gelmeyen haberler için kategoriye özel bir
- * gradyan arka plan üretir — boş/kırık görünen bir ikon kutusu yerine
- * markaya uygun, görsel olarak dolu bir yer tutucu sağlar.
+ * yer tutucu tasarım tanımı: belirgin (OLED'de de fark edilir) bir
+ * gradyan + o kategoriyi temsil eden bir ikon. Amaç, boş/kırık görünen
+ * silik bir kutu yerine markaya uygun, "kasıtlı tasarlanmış" hissi
+ * veren dolgun bir görsel sağlamak.
  */
-const CATEGORY_GRADIENTS: Record<NewsCategory, string> = {
-  gundem: 'from-red-950 via-oled-panel2 to-oled-panel2',
-  ekonomi: 'from-emerald-950 via-oled-panel2 to-oled-panel2',
-  dunya: 'from-blue-950 via-oled-panel2 to-oled-panel2',
-  spor: 'from-orange-950 via-oled-panel2 to-oled-panel2',
-  teknoloji: 'from-violet-950 via-oled-panel2 to-oled-panel2',
-  saglik: 'from-teal-950 via-oled-panel2 to-oled-panel2',
-  'kultur-sanat': 'from-pink-950 via-oled-panel2 to-oled-panel2',
-  magazin: 'from-fuchsia-950 via-oled-panel2 to-oled-panel2',
-  bilim: 'from-cyan-950 via-oled-panel2 to-oled-panel2',
-  yasam: 'from-amber-950 via-oled-panel2 to-oled-panel2',
+const CATEGORY_PLACEHOLDER: Record<
+  NewsCategory,
+  { gradient: string; iconColor: string; Icon: LucideIcon }
+> = {
+  gundem: {
+    gradient: 'from-red-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-red-400/70',
+    Icon: Newspaper,
+  },
+  ekonomi: {
+    gradient: 'from-emerald-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-emerald-400/70',
+    Icon: TrendingUp,
+  },
+  dunya: {
+    gradient: 'from-blue-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-blue-400/70',
+    Icon: Globe2,
+  },
+  spor: {
+    gradient: 'from-orange-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-orange-400/70',
+    Icon: Trophy,
+  },
+  teknoloji: {
+    gradient: 'from-violet-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-violet-400/70',
+    Icon: Cpu,
+  },
+  saglik: {
+    gradient: 'from-teal-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-teal-400/70',
+    Icon: HeartPulse,
+  },
+  'kultur-sanat': {
+    gradient: 'from-pink-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-pink-400/70',
+    Icon: Palette,
+  },
+  magazin: {
+    gradient: 'from-fuchsia-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-fuchsia-400/70',
+    Icon: Sparkles,
+  },
+  bilim: {
+    gradient: 'from-cyan-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-cyan-400/70',
+    Icon: FlaskConical,
+  },
+  yasam: {
+    gradient: 'from-amber-900/70 via-oled-panel2 to-oled-panel',
+    iconColor: 'text-amber-400/70',
+    Icon: Leaf,
+  },
 };
 
 interface NewsCardProps {
@@ -45,6 +103,7 @@ interface NewsCardProps {
  */
 export function NewsCard({ article, className, index = 0 }: NewsCardProps) {
   const categoryLabel = NEWS_CATEGORY_LABELS_TR[article.category];
+  const placeholder = CATEGORY_PLACEHOLDER[article.category];
 
   return (
     <motion.div
@@ -69,12 +128,22 @@ export function NewsCard({ article, className, index = 0 }: NewsCardProps) {
             ) : (
               <div
                 className={cn(
-                  'flex h-full w-full items-center justify-center bg-gradient-to-br',
-                  CATEGORY_GRADIENTS[article.category],
+                  'relative flex h-full w-full items-center justify-center overflow-hidden bg-gradient-to-br',
+                  placeholder.gradient,
                 )}
               >
-                <Newspaper
-                  className="h-9 w-9 text-foreground/25"
+                {/* Hafif nokta deseni — düz bir renk kutusu değil, dokulu bir yüzey hissi verir. */}
+                <div
+                  className="absolute inset-0 opacity-[0.08]"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '16px 16px',
+                  }}
+                  aria-hidden="true"
+                />
+                <placeholder.Icon
+                  className={cn('relative h-10 w-10', placeholder.iconColor)}
                   aria-hidden="true"
                   strokeWidth={1.5}
                 />
