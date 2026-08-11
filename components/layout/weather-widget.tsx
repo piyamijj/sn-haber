@@ -105,7 +105,18 @@ export function WeatherWidget({ className }: { className?: string }) {
   }, []);
 
   if (!weather) {
-    return null;
+    // Veri gelene kadar tamamen kaybolmak yerine aynı boyutta boş bir
+    // yer tutucu render ediyoruz. Widget aniden ortaya çıkıp komşu
+    // piyasa ticker'ının genişliğini değiştirmesin — bu tür ani genişlik
+    // sıçramaları mobilde ticker'ın kayan animasyonunun sıçramasına
+    // katkıda bulunan reflow'lardan biriydi.
+    return (
+      <div
+        className={cn('flex shrink-0 items-center gap-1.5 text-sm', className)}
+        style={{ minWidth: '5.5rem' }}
+        aria-hidden="true"
+      />
+    );
   }
 
   const WeatherIcon = getWeatherIcon(weather.weatherCode, weather.isDay);
@@ -116,6 +127,7 @@ export function WeatherWidget({ className }: { className?: string }) {
         'flex shrink-0 items-center gap-1.5 text-sm text-foreground/80',
         className,
       )}
+      style={{ minWidth: '5.5rem' }}
     >
       <WeatherIcon className="h-4 w-4 text-brand" aria-hidden="true" />
       <span className="font-medium">{weather.temperatureCelsius}°C</span>

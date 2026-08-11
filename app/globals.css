@@ -109,6 +109,16 @@ body {
   overflow: hidden;
   white-space: nowrap;
   max-width: 100%;
+  /* contain: layout+paint izole eder — bu kutunun İÇİNDE olan hiçbir
+     reflow/repaint (örn. hemen yanındaki WeatherWidget'in veri gelince
+     genişlik değiştirmesi, piyasa fiyatlarının 30sn'de bir metnini
+     güncellemesi) dışarıya sızıp devam eden CSS animasyonunun compositor
+     katmanını mobil tarayıcılarda (özellikle Chrome/Safari Android/iOS)
+     yeniden oluşturmaya zorlamaz. Bu, mobilde bildirilen "bir haberi
+     gösterip ikincisi gelmeden başa sıçrama" hatasının kök nedenlerinden
+     biridir: komşu bir elemanın boyut değişimi, tarayıcının animasyonlu
+     transform katmanını mobilde bazen sıfırlamasına yol açabiliyordu. */
+  contain: layout paint;
   mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
 }
@@ -145,8 +155,18 @@ body {
   display: flex;
   align-items: center;
   white-space: nowrap;
+  width: max-content;
   animation: marquee-scroll var(--marquee-duration, 30s) linear infinite;
-  will-change: transform;
+  /* will-change: transform kaldırıldı — bazı mobil GPU/tarayıcı
+     birleşimlerinde (Android Chrome), will-change ile birlikte
+     mask-image kullanan bir elemanın komşularından gelen reflow,
+     tarayıcının katmanı "sıfırlayıp" animasyonu 0%'dan yeniden
+     başlatmasına yol açabiliyor. transform: translateZ(0) ise
+     will-change'e gerek kalmadan GPU katmanına alır ve bu riski
+     taşımaz. backface-visibility: hidden, iOS Safari'de aynı katmanın
+     kararsız görünmesini önleyen ek bir stabilite katkısıdır. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .marquee-track:hover {
