@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { MarketQuote } from '@/types';
 import { formatNumberTr, cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WeatherWidget } from '@/components/layout/weather-widget';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -107,30 +108,38 @@ export function MarketTicker() {
   const durationSeconds = Math.max(8, quotes.length * 2.3);
 
   return (
-    <div className="ticker-viewport border-b border-oled-border bg-oled px-3 py-2">
-      <div
-        className="marquee-track marquee-pause-on-hover"
-        style={{ '--marquee-duration': `${durationSeconds}s` } as CSSProperties}
-      >
-        {loopQuotes.map((quote, index) => {
-          const { Icon, colorClass } = getDirectionVisual(quote.direction);
-          const changeSign = quote.changePercent > 0 ? '+' : '';
+    <div className="flex items-center gap-3 border-b border-oled-border bg-oled px-3 py-2">
+      {/* Canlı hava durumu göstergesi — piyasa ticker'ının hemen solunda,
+          sabit (kaymayan) bir alanda gösterilir. Konum izni yoksa/
+          alınamazsa İstanbul için gösterilir, hiçbir hata görünmez. */}
+      <WeatherWidget className="shrink-0" />
+      <span className="hidden h-4 w-px shrink-0 bg-oled-border sm:block" aria-hidden="true" />
 
-          return (
-            <div
-              key={`${quote.symbol}-${index}`}
-              className="flex shrink-0 items-center gap-2 pr-8 text-sm"
-            >
-              <span className="font-semibold text-foreground/90">{quote.label}</span>
-              <span className="text-foreground/80">{formatQuotePrice(quote)}</span>
-              <span className={cn('flex items-center gap-1 font-medium', colorClass)}>
-                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                {changeSign}
-                {formatNumberTr(quote.changePercent, 2)}%
-              </span>
-            </div>
-          );
-        })}
+      <div className="ticker-viewport flex-1">
+        <div
+          className="marquee-track marquee-pause-on-hover"
+          style={{ '--marquee-duration': `${durationSeconds}s` } as CSSProperties}
+        >
+          {loopQuotes.map((quote, index) => {
+            const { Icon, colorClass } = getDirectionVisual(quote.direction);
+            const changeSign = quote.changePercent > 0 ? '+' : '';
+
+            return (
+              <div
+                key={`${quote.symbol}-${index}`}
+                className="flex shrink-0 items-center gap-2 pr-8 text-sm"
+              >
+                <span className="font-semibold text-foreground/90">{quote.label}</span>
+                <span className="text-foreground/80">{formatQuotePrice(quote)}</span>
+                <span className={cn('flex items-center gap-1 font-medium', colorClass)}>
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {changeSign}
+                  {formatNumberTr(quote.changePercent, 2)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

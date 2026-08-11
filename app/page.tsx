@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 
 import { getPaginatedArticles } from '@/lib/haberler/queries';
+import { getTodaysHoroscopes } from '@/lib/burc/queries';
 import { NewsFeed } from '@/components/haber/news-feed';
+import { HoroscopeWidget } from '@/components/haber/horoscope-widget';
 
 export const revalidate = 300;
 
@@ -12,7 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const { items, nextCursor, hasMore } = await getPaginatedArticles({});
+  const [{ items, nextCursor, hasMore }, horoscopeReadings] = await Promise.all([
+    getPaginatedArticles({}),
+    getTodaysHoroscopes(),
+  ]);
 
   return (
     <div className="container flex flex-col gap-6 py-6">
@@ -25,6 +30,9 @@ export default async function HomePage() {
           doğrulanmış şekilde tek akışta.
         </p>
       </div>
+
+      {/* Cron o gün için henüz çalışmamışsa widget kendini otomatik gizler. */}
+      <HoroscopeWidget readings={horoscopeReadings} />
 
       <NewsFeed
         initialItems={items}

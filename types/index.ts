@@ -149,3 +149,83 @@ export interface GeminiAnalysisResult {
   verificationNote: string;
   isFlashWorthy: boolean;
 }
+
+/** 12 burç işareti — Supabase "burc_yorumlari" tablosundaki "burc" alanıyla eşleşir. */
+export type ZodiacSign =
+  | 'koc'
+  | 'boga'
+  | 'ikizler'
+  | 'yengec'
+  | 'aslan'
+  | 'basak'
+  | 'terazi'
+  | 'akrep'
+  | 'yay'
+  | 'oglak'
+  | 'kova'
+  | 'balik';
+
+export const ZODIAC_SIGN_LABELS_TR: Record<ZodiacSign, string> = {
+  koc: 'Koç',
+  boga: 'Boğa',
+  ikizler: 'İkizler',
+  yengec: 'Yengeç',
+  aslan: 'Aslan',
+  basak: 'Başak',
+  terazi: 'Terazi',
+  akrep: 'Akrep',
+  yay: 'Yay',
+  oglak: 'Oğlak',
+  kova: 'Kova',
+  balik: 'Balık',
+};
+
+/** Her burcun tarih aralığı gösterimi (kullanıcı arayüzünde ipucu olarak gösterilir). */
+export const ZODIAC_SIGN_DATE_RANGES_TR: Record<ZodiacSign, string> = {
+  koc: '21 Mart - 19 Nisan',
+  boga: '20 Nisan - 20 Mayıs',
+  ikizler: '21 Mayıs - 20 Haziran',
+  yengec: '21 Haziran - 22 Temmuz',
+  aslan: '23 Temmuz - 22 Ağustos',
+  basak: '23 Ağustos - 22 Eylül',
+  terazi: '23 Eylül - 22 Ekim',
+  akrep: '23 Ekim - 21 Kasım',
+  yay: '22 Kasım - 21 Aralık',
+  oglak: '22 Aralık - 19 Ocak',
+  kova: '20 Ocak - 18 Şubat',
+  balik: '19 Şubat - 20 Mart',
+};
+
+/** Sıralı burç listesi — UI'da tutarlı bir sırayla göstermek için kullanılır. */
+export const ZODIAC_SIGN_ORDER: ZodiacSign[] = [
+  'koc',
+  'boga',
+  'ikizler',
+  'yengec',
+  'aslan',
+  'basak',
+  'terazi',
+  'akrep',
+  'yay',
+  'oglak',
+  'kova',
+  'balik',
+];
+
+/** Supabase "burc_yorumlari" tablosundaki bir günlük burç yorumu kaydı. */
+export interface HoroscopeReading {
+  sign: ZodiacSign;
+  /** AI (Gemini) tarafından üretilen 2-3 cümlelik günlük yorum metni. */
+  commentText: string;
+  /** Yorumun ait olduğu takvim günü (YYYY-MM-DD, Europe/Istanbul). */
+  readingDate: string;
+}
+
+/** Hava durumu widget'ının /api/weather uç noktasından döndürdüğü veri. */
+export interface WeatherSnapshot {
+  cityName: string;
+  temperatureCelsius: number;
+  /** Open-Meteo WMO hava kodu — ikon/etiket eşlemesi için kullanılır. */
+  weatherCode: number;
+  isDay: boolean;
+}
