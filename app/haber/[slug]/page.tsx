@@ -33,8 +33,10 @@ export async function generateMetadata({ params }: ArticlePageParams): Promise<M
     };
   }
 
-  const ogImageUrl = `${siteUrl}/opengraph/${article.slug}/opengraph-image`;
-
+  // Not: OpenGraph/Twitter görseli burada elle belirtilmiyor — bu segmentteki
+  // opengraph-image.tsx dosyası (app/haber/[slug]/opengraph-image.tsx),
+  // Next.js'in dosya-tabanlı metadata konvansiyonu sayesinde otomatik olarak
+  // bu sayfanın openGraph.images / twitter.images alanına bağlanır.
   return {
     title: article.title,
     description: article.summary,
@@ -50,20 +52,11 @@ export async function generateMetadata({ params }: ArticlePageParams): Promise<M
       locale: 'tr_TR',
       publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt,
-      images: [
-        {
-          url: ogImageUrl,
-          width: 1200,
-          height: 630,
-          alt: article.title,
-        },
-      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: article.title,
       description: article.summary,
-      images: [ogImageUrl],
     },
   };
 }
