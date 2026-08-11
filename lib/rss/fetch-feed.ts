@@ -21,6 +21,7 @@ const rssParser: Parser<
     enclosure?: { url?: string };
     'media:content'?: { $?: { url?: string } };
     'media:thumbnail'?: { $?: { url?: string } };
+    itemImageTag?: string;
   }
 > = new Parser({
   customFields: {
@@ -28,6 +29,13 @@ const rssParser: Parser<
       ['media:content', 'media:content'],
       ['media:thumbnail', 'media:thumbnail'],
       ['content:encoded', 'content:encoded'],
+      // Anadolu Ajansı gibi bazı kaynaklar, standart olmayan şekilde
+      // görseli item seviyesinde düz bir <image>URL</image> etiketinde
+      // taşır (RSS 2.0 spesifikasyonunda item için <image> tanımlı
+      // değildir, bu yüzden rss-parser'ın varsayılan alanları bunu
+      // yakalamaz). "itemImageTag" adıyla ayrı bir alias tanımlanır ki
+      // channel seviyesindeki standart <image> ile çakışmasın.
+      ['image', 'itemImageTag'],
     ],
   },
   timeout: 15000,
@@ -91,6 +99,7 @@ function resolveImageUrl(item: {
   content?: string;
   contentSnippet?: string;
   'content:encoded'?: string;
+  itemImageTag?: string;
 }): string | null {
   if (item.enclosure?.url) {
     return item.enclosure.url;
@@ -104,6 +113,13 @@ function resolveImageUrl(item: {
   const mediaThumbnailUrl = item['media:thumbnail']?.$?.url;
   if (mediaThumbnailUrl) {
     return mediaThumbnailUrl;
+  }
+
+  // Anadolu Ajansı gibi kaynaklar görseli standart olmayan bir item-level
+  // <image>URL</image> etiketinde taşır (canlı ortamda tespit edildi:
+  // AA'nın görselleri hiç gelmiyordu çünkü bu alan hiç kontrol edilmiyordu).
+  if (item.itemImageTag && item.itemImageTag.trim().startsWith('http')) {
+    return item.itemImageTag.trim();
   }
 
   const fromContent = extractImageFromContent(item.content);

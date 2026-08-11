@@ -11,14 +11,24 @@ const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
 >(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      'inline-flex h-10 items-center justify-start gap-1 overflow-x-auto rounded-md bg-oled-panel2 p-1 text-muted-foreground',
-      className,
-    )}
-    {...props}
-  />
+  // NOT: Önceki "inline-flex" biçimi, listenin kendi içeriği kadar
+  // genişleyip mobilde ekran genişliğini aşmasına, ama üst container'da
+  // kaydırma imkânı olmadan (kesik, erişilemez) görünmesine sebep
+  // oluyordu. "flex w-full max-w-full" ile liste artık kendi ebeveyninin
+  // genişliğine sabitlenir ve taşan öğeler bu bileşenin KENDİ
+  // overflow-x-auto'su ile mobilde dokunarak kaydırılabilir olur;
+  // hide-scrollbar + scroll-fade-right, kaydırma çubuğunu gizlerken
+  // "daha fazla kategori var" görsel ipucunu korur.
+  <div className="scroll-fade-right w-full max-w-full">
+    <TabsPrimitive.List
+      ref={ref}
+      className={cn(
+        'hide-scrollbar flex h-10 w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-md bg-oled-panel2 p-1 text-muted-foreground',
+        className,
+      )}
+      {...props}
+    />
+  </div>
 ));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
@@ -29,7 +39,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       className,
     )}
     {...props}

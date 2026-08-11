@@ -114,14 +114,37 @@ body {
 }
 
 /* Kategori navigasyonu gibi elle kaydırılan şeritlerde kaydırma çubuğunu
-   görsel olarak gizler (fonksiyonu korur), taşma davranışını değiştirmez. */
+   görsel olarak gizler (fonksiyonu korur), taşma davranışını değiştirmez.
+   -webkit-overflow-scrolling: touch, iOS Safari'de dokunmatik kaydırmanın
+   akıcı çalışmasını garantiler (bazı eski WebKit sürümlerinde bu olmadan
+   overflow-x kaydırması "yapışkan"/çalışmaz gibi hissedilebilir). */
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Yatay kaydırılabilir bir şeridin (kategori navigasyonu gibi) sağ ucuna
+   hafif bir gradyan ekleyerek "burada daha fazla içerik var, kaydırın"
+   görsel ipucu verir — kullanıcı listenin orada bittiğini düşünüp kalan
+   kategorilere hiç ulaşmayabilir, bu ipucu olmadan. */
+.scroll-fade-right {
+  position: relative;
+}
+
+.scroll-fade-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  background: linear-gradient(to right, transparent, hsl(var(--background)));
+  pointer-events: none;
 }
 
 .live-dot {

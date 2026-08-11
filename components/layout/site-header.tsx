@@ -48,33 +48,37 @@ export function SiteHeader({ flashItems }: SiteHeaderProps) {
             <span className="text-2xl font-black tracking-tight text-foreground">Haber</span>
           </Link>
 
-          <nav
-            aria-label="Kategori navigasyonu"
-            className="hide-scrollbar min-w-0 flex-1 overflow-x-auto"
-          >
-            <ul className="flex w-max items-center gap-1 whitespace-nowrap">
-              {CATEGORY_ORDER.map((category) => {
-                const isActive = pathname === `/kategori/${category}`;
+          <div className="scroll-fade-right min-w-0 flex-1">
+            <nav
+              aria-label="Kategori navigasyonu"
+              className="hide-scrollbar overflow-x-auto"
+            >
+              <ul className="flex w-max items-center gap-1 whitespace-nowrap">
+                {CATEGORY_ORDER.map((category) => {
+                  const isActive = pathname === `/kategori/${category}`;
 
-                return (
-                  <li key={category}>
-                    <Link
-                      href={`/kategori/${category}`}
-                      aria-current={isActive ? 'page' : undefined}
-                      className={cn(
-                        'inline-flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-oled-panel2 hover:text-foreground',
-                        isActive
-                          ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-                          : 'text-muted-foreground',
-                      )}
-                    >
-                      {NEWS_CATEGORY_LABELS_TR[category]}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+                  return (
+                    <li key={category}>
+                      <Link
+                        href={`/kategori/${category}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={cn(
+                          'inline-flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-oled-panel2 hover:text-foreground',
+                          isActive
+                            ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        {NEWS_CATEGORY_LABELS_TR[category]}
+                      </Link>
+                    </li>
+                  );
+                })}
+                {/* Fade'in altında son öğe gizlenmesin diye küçük bir sağ boşluk payı. */}
+                <li className="w-2 shrink-0" aria-hidden="true" />
+              </ul>
+            </nav>
+          </div>
         </div>
       </header>
     </div>

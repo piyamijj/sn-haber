@@ -9,15 +9,27 @@ import { quickProcessArticle } from '@/lib/ai/groq';
 import { analyzeArticle, generateEmbedding } from '@/lib/ai/gemini';
 import { markContentHashSeen } from '@/lib/redis/client';
 import { estimateReadingTimeMinutes, slugify } from '@/lib/utils';
-import type { RssFeedItem } from '@/types';
+import type { NewsCategory, RssFeedItem } from '@/types';
 
 /**
  * Supabase "kaynaklar" tablosundaki aktif bir RSS kaynağının satır biçimi.
+ *
+ * sabit_kategori: Bu feed'in bilinen/sabit kategorisi (örn. bir kaynağın
+ * kendi "spor" feed'i). Dolu olduğunda pipeline bu değeri doğrudan kullanır
+ * ve o öğe için Gemini kategorizasyon çağrısını atlar — AI kategorizasyonu
+ * artık sadece sabit_kategori'si olmayan (genel/karma) feed'ler için YEDEK
+ * yöntem olarak çalışır.
+ * goruntu_adi: Haberde source_name olarak gösterilecek marka adı (örn.
+ * "Hürriyet"). "isim" kolonu satır başına benzersizdir (aynı markanın
+ * kategoriye özel birden fazla feed'i olabileceğinden), goruntu_adi ise
+ * kasıtlı olarak tekrar edebilir.
  */
 interface KaynakRow {
   id: string;
   isim: string;
   rss_url: string;
+  sabit_kategori: NewsCategory | null;
+  goruntu_adi: string | null;
 }
 
 /**
@@ -107,6 +119,8 @@ type ItemProcessResult =
 async function processFeedItem(
   item: RssFeedItem,
   kaynakId: string | null,
+  sabitKategori: NewsCategory | null,
+  goruntuAdi: string | null,
 ): Promise<ItemProcessResult> {
   try {
     const contentHash = computeContentHash(item.title, item.contentSnippet);
@@ -118,10 +132,18 @@ async function processFeedItem(
 
     const quickResult = await quickProcessArticle(item.title, item.contentSnippet);
 
+    // ANA YÖNTEM: Kaynağın kendi kategoriye özel feed'i varsa (sabitKategori
+    // dolu), kategori zaten %100 doğru şekilde biliniyor — Gemini'ye kategori
+    // sormaya gerek yok. Bu durumda Gemini'den sadece etiket/doğrulama/
+    // flaş-haber değerlendirmesi istenir, "category" alanı kullanılmaz.
+    // YEDEK YÖNTEM: sabitKategori NULL ise (örn. bir kaynağın genel/karma
+    // "anasayfa" feed'i), kategori eskisi gibi Gemini analiziyle belirlenir.
     const [analysisResult, embedding] = await Promise.all([
       analyzeArticle(quickResult.refinedTitle, item.contentSnippet),
       generateEmbedding(`${quickResult.refinedTitle}\n${item.contentSnippet}`),
     ]);
+
+    const finalCategory: NewsCategory = sabitKategori ?? analysisResult.category;
 
     if (embedding.length > 0) {
       const semanticCheck = await findSemanticDuplicate(embedding);
@@ -142,9 +164,9 @@ async function processFeedItem(
       summary: quickResult.summary,
       ai_quick_summary: quickResult.quickSummaryBullets,
       content: item.contentSnippet,
-      category: analysisResult.category,
+      category: finalCategory,
       tags: analysisResult.tags,
-      source_name: item.sourceName,
+      source_name: goruntuAdi ?? item.sourceName,
       source_url: item.link,
       image_url: item.imageUrl,
       published_at: publishedAt,
@@ -199,7 +221,7 @@ export async function runRssIngestPipeline(): Promise<RssIngestSummary> {
 
   const { data: kaynaklar, error: kaynaklarError } = await supabase
     .from('kaynaklar')
-    .select('id, isim, rss_url')
+    .select('id, isim, rss_url, sabit_kategori, goruntu_adi')
     .eq('aktif', true);
 
   if (kaynaklarError) {
@@ -232,9 +254,9 @@ export async function runRssIngestPipeline(): Promise<RssIngestSummary> {
     };
   }
 
-  const kaynakIdBySourceName = new Map<string, string>();
+  const kaynakById = new Map<string, KaynakRow>();
   for (const kaynak of aktifKaynaklar) {
-    kaynakIdBySourceName.set(kaynak.isim, kaynak.id);
+    kaynakById.set(kaynak.isim, kaynak);
   }
 
   const kaynakSonuclari: RssIngestSummary['kaynakSonuclari'] = [];
@@ -277,8 +299,13 @@ export async function runRssIngestPipeline(): Promise<RssIngestSummary> {
   for (const batch of batches) {
     const batchResults = await Promise.all(
       batch.map((item) => {
-        const kaynakId = kaynakIdBySourceName.get(item.sourceName) ?? null;
-        return processFeedItem(item, kaynakId);
+        const kaynak = kaynakById.get(item.sourceName);
+        return processFeedItem(
+          item,
+          kaynak?.id ?? null,
+          kaynak?.sabit_kategori ?? null,
+          kaynak?.goruntu_adi ?? null,
+        );
       }),
     );
 
