@@ -3,14 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import type { FlashNewsItem } from '@/types';
+import type { FlashNewsItem, HoroscopeReading } from '@/types';
 import { NEWS_CATEGORY_LABELS_TR, type NewsCategory } from '@/types';
 import { FlashTicker } from '@/components/layout/flash-ticker';
 import { MarketTicker } from '@/components/layout/market-ticker';
+import { HoroscopeTicker } from '@/components/layout/horoscope-ticker';
 import { cn } from '@/lib/utils';
 
 interface SiteHeaderProps {
   flashItems: FlashNewsItem[];
+  horoscopeReadings: HoroscopeReading[];
 }
 
 const CATEGORY_ORDER: NewsCategory[] = [
@@ -28,18 +30,19 @@ const CATEGORY_ORDER: NewsCategory[] = [
 
 /**
  * Sitenin üst kısmında yer alan, sayfa kaydırılsa bile sabit (sticky)
- * kalan tüm başlık yığını: son dakika bandı, canlı piyasa ticker'ı ve
- * marka/kategori navigasyonu. Bu üçü birlikte tek bir sticky konteynerde
- * gruplanır, böylece kullanıcı aşağı kaydırdığında hepsi birlikte
- * üstte sabit kalır.
+ * kalan tüm başlık yığını: son dakika bandı, canlı piyasa ticker'ı,
+ * günlük burç yorumu bandı ve marka/kategori navigasyonu. Bunlar
+ * birlikte tek bir sticky konteynerde gruplanır, böylece kullanıcı
+ * aşağı kaydırdığında hepsi birlikte üstte sabit kalır.
  */
-export function SiteHeader({ flashItems }: SiteHeaderProps) {
+export function SiteHeader({ flashItems, horoscopeReadings }: SiteHeaderProps) {
   const pathname = usePathname();
 
   return (
     <div className="sticky top-0 z-50 w-full">
       <FlashTicker items={flashItems} />
       <MarketTicker />
+      <HoroscopeTicker readings={horoscopeReadings} />
 
       <header className="w-full overflow-hidden border-b border-oled-border bg-oled/95 backdrop-blur supports-[backdrop-filter]:bg-oled/80">
         <div className="container flex h-16 max-w-full items-center justify-between gap-4">
