@@ -140,8 +140,22 @@ verilecek. Görevin:
      yapılamıyor.
    Seçimini 1 kısa Türkçe cümleyle (verificationNote) açıkla.
 4. Bu haberin "son dakika" (flash/breaking) niteliğinde olup olmadığına
-   karar ver (isFlashWorthy: true/false) — aciliyet, önemli bir gelişme,
-   yüksek kamu ilgisi taşıyan olaylar için true.
+   karar ver (isFlashWorthy: true/false). Aşağıdaki türden bir olayı
+   bildiren HER haberi isFlashWorthy: true olarak işaretle (bunlar
+   otomatik olarak son dakika sayılır, ayrıca "önemlilik" tartışmasına
+   girmene gerek yok):
+   - Ölüm, cinayet, intihar veya şüpheli/cansız beden bulunması,
+   - Trafik kazası, patlama, yangın, doğal afet (deprem, sel vb.),
+   - Tutuklama, gözaltı, operasyon, terör olayı veya güvenlik müdahalesi,
+   - Resmi bir kurum/yetkilinin YENİ bir karar, açıklama veya kriz
+     duyurusu,
+   - Önemli bir spor müsabakasının SONUCU (maç bitti, tur geçildi/elendi,
+     transfer resmileşti vb. — henüz oynanmakta olan/önizleme haberleri
+     değil).
+   Bunların dışında kalan, aciliyeti olmayan ama yine de kamu ilgisi
+   yüksek olan diğer haberler için de true verebilirsin; sadece rutin,
+   bilgilendirici, aciliyeti olmayan duyurular (örn. başvuru tarihleri,
+   genel bilgi haberleri) için false ver.
 
 Yanıtını SADECE şu JSON biçiminde ver, başka hiçbir metin ekleme:
 {

@@ -124,7 +124,7 @@ function buildQuote(
  * MarketQuote[] biçimi değişmeyecek şekilde tasarlandı — böylece
  * gerçek entegrasyon tek fonksiyonluk bir değişiklikle yapılabilir.
  */
-function getPlaceholderQuotes(): MarketQuote[] {
+export function getPlaceholderQuotes(): MarketQuote[] {
   const now = new Date().toISOString();
 
   const placeholderValues: Record<MarketSymbol, { price: number; changePercent: number }> = {

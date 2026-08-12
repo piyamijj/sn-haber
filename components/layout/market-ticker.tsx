@@ -48,7 +48,6 @@ function formatQuotePrice(quote: MarketQuote): string {
 export function MarketTicker() {
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -63,14 +62,14 @@ export function MarketTicker() {
 
         const data = (await response.json()) as { quotes: MarketQuote[] };
 
-        if (isMounted) {
-          setQuotes(data.quotes ?? []);
-          setHasError(false);
+        if (isMounted && data.quotes && data.quotes.length > 0) {
+          setQuotes(data.quotes);
         }
       } catch {
-        if (isMounted) {
-          setHasError(true);
-        }
+        // Bu döngüdeki çekim başarısız oldu — ekrandaki mevcut (önceki
+        // başarılı çekimden gelen) kotasyonlara sessizce dokunmuyoruz,
+        // bant görünür kalmaya devam eder. Bir sonraki 30sn'lik
+        // döngüde yeniden denenecek.
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -97,7 +96,13 @@ export function MarketTicker() {
     );
   }
 
-  if (hasError || quotes.length === 0) {
+  // Piyasa bandının her zaman görünür kalması istendiği için: 30sn'lik
+  // yenileme döngüsünde TEK bir çağrı başarısız olsa bile (geçici ağ
+  // sorunu vb.), ekranda hâlâ önceki başarılı çekimden gelen kotasyonlar
+  // varsa bunları göstermeye devam ederiz — hasError tek başına bandı
+  // gizletmez. Bant sadece gerçekten HİÇ veri elde edilememişse
+  // (ilk yükleme başarısız + hiç quotes yoksa) gizlenir.
+  if (quotes.length === 0) {
     return null;
   }
 
