@@ -28,22 +28,6 @@ const ZODIAC_GLYPHS: Record<ZodiacSign, string> = {
 };
 
 /**
- * Bir metni belirtilen uzunluğa, kelimenin ortasından kesmeden (son
- * tam kelimeden sonra) kısaltır ve sonuna "…" ekler.
- */
-function truncateText(text: string, maxLength = 80): string {
-  if (text.length <= maxLength) {
-    return text;
-  }
-
-  const sliced = text.slice(0, maxLength);
-  const lastSpaceIndex = sliced.lastIndexOf(' ');
-  const safeSlice = lastSpaceIndex > 0 ? sliced.slice(0, lastSpaceIndex) : sliced;
-
-  return `${safeSlice.trimEnd()}…`;
-}
-
-/**
  * Piyasa ticker'ının hemen altında yer alan, günlük burç yorumlarını
  * kayan bir bant olarak gösteren bileşen. Son dakika bandı
  * (flash-ticker.tsx) ve piyasa ticker'ı (market-ticker.tsx) ile aynı
@@ -64,9 +48,11 @@ export function HoroscopeTicker({ readings, className }: HoroscopeTickerProps) {
 
   // Kesintisiz döngü hissi için yorum listesini iki kez tekrar ediyoruz.
   const loopReadings = [...readings, ...readings];
-  // Burç yorumu metinleri son dakika başlıklarından daha uzun olduğu
-  // için öğe başına daha fazla süre veriyoruz.
-  const durationSeconds = Math.max(20, readings.length * 5);
+  // Burç yorumu metinleri artık tam (kesilmemiş) gösterildiği için
+  // son dakika başlıklarından epey daha uzun (~180-220 karakter);
+  // okuyucunun cümleyi bitirebilmesi için öğe başına yeterli süre
+  // veriyoruz.
+  const durationSeconds = Math.max(35, readings.length * 9);
 
   return (
     <div
@@ -99,7 +85,12 @@ export function HoroscopeTicker({ readings, className }: HoroscopeTickerProps) {
               <span className="font-semibold text-foreground/90">
                 {ZODIAC_SIGN_LABELS_TR[reading.sign]}
               </span>
-              <span className="text-foreground/70">{truncateText(reading.commentText)}</span>
+              {/* Bant zaten sürekli kaydığı için metni ~80 karakterde
+                  kesmeye gerek yok — kesme, kullanıcının cümlenin
+                  ortasında "..." görüp yarım kalmış hissi edinmesine
+                  yol açıyordu. Tam metin gösterilir; okuma süresi
+                  yukarıdaki durationSeconds hesabına yansıtılmıştır. */}
+              <span className="text-foreground/70">{reading.commentText}</span>
             </div>
           ))}
         </div>
