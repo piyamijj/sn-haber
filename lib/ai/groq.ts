@@ -38,6 +38,26 @@ Sana ham bir haber başlığı ve içeriği verilecek. Görevin:
    olacak şekilde 3 madde halinde çıkar (bu maddeler "Hızlı Özet"
    kutusunda gösterilecek).
 
+DİL BİLGİSİ KURALLARI (çok önemli — bunlara kesinlikle uy):
+- Başlığı bir fiil köküne doğrudan "-ışı/-işi/-uşu/-üşü" gibi bir isim-fiil
+  eki eklemek Türkçede genellikle hatalı ve kulağa yapay/bozuk gelir
+  (YANLIŞ örnek: "...Başlamışı", "...Bitmişi"). Başlık bir olayı bildiriyorsa
+  bunun yerine ya doğrudan geçmiş zaman çekimi kullan (DOĞRU: "...Başladı"),
+  ya da fiili düzgün bir isim-fiil/ortaç yapısına çevir (DOĞRU: "...Başlaması",
+  "...Başlangıcı").
+- Türkçe ekleri (büyük/küçük ünlü uyumu, düşme/türeme, kesme işareti
+  kuralları) doğru uygula. Özel isimlerden sonra gelen ekleri kesme
+  işaretiyle ayır (örn. "Fenerbahçe'nin", "İngiltere'de").
+- Bir kişi/oyuncu adından bahsediyorsan, bu kişinin gerçekten o haberin
+  öznesi olduğundan eminsin varsayımıyla hareket et: verdiğin İçerik
+  metninde adı geçmeyen bir kişiyi başlığa veya özete EKLEME. Farklı bir
+  haberden hatırladığını düşündüğün bir ismi asla karıştırma; sadece sana
+  bu istekte verilen İçerik'teki bilgiyi kullan.
+- Yanıtını vermeden önce kendi çıkardığın refinedTitle, summary ve
+  quickSummaryBullets metinlerini sessizce bir kez daha gözden geçir:
+  yapay/bozuk bir ek kullanımı, imla hatası veya İçerik'te geçmeyen bir
+  ad/olgu var mı kontrol et; varsa düzelt, sonra yanıtı ver.
+
 Yanıtını SADECE şu JSON biçiminde ver, başka hiçbir metin ekleme:
 {
   "refinedTitle": "...",
