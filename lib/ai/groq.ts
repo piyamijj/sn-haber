@@ -25,7 +25,13 @@ export function getGroqClient(): Groq {
   return groqClient;
 }
 
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+// NOT: 'llama-3.1-8b-instant' Groq tarafından 16 Ağustos 2026 itibarıyla
+// kullanımdan kaldırıldı (deprecated). Groq'un önerdiği ve kullanıcının
+// tercih ettiği yeni model 'openai/gpt-oss-120b' — bir "reasoning" modeli
+// olduğu için `reasoning_effort` parametresiyle çağrılır (düşünme
+// (chain-of-thought) çıktısı ayrı bir `reasoning` alanına gider, JSON
+// `content` alanını kirletmez; test edildi ve doğrulandı).
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 
 const SYSTEM_PROMPT = `Sen SN Haber platformu için çalışan bir haber editörü yapay zekasısın.
 Sana ham bir haber başlığı ve içeriği verilecek. Görevin:
@@ -102,6 +108,10 @@ export async function quickProcessArticle(
       temperature: 0.3,
       max_tokens: 600,
       response_format: { type: 'json_object' },
+      // gpt-oss modelleri "reasoning" modelleridir; hızlı ve ucuz bir
+      // RSS ön-işleme adımı için düşük düşünme eforu yeterli ve gereklidir
+      // (aksi halde gereksiz yere yavaşlar/token harcar).
+      reasoning_effort: 'low',
     });
 
     const rawResponse = completion.choices?.[0]?.message?.content;

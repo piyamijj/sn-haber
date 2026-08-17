@@ -31,7 +31,10 @@ interface AssistantReplyResult {
 
 const MAX_CONTEXT_ARTICLES = 6;
 const RAG_DAY_RANGE = 7;
-const GROQ_CHAT_MODEL = "llama-3.1-8b-instant";
+// NOT: 'llama-3.1-8b-instant' 16 Ağustos 2026'da Groq tarafından
+// kullanımdan kaldırıldı; yerine 'openai/gpt-oss-120b' kullanılıyor
+// (reasoning_effort: 'low' ile hızlı/temiz yanıt için, bkz. groq.ts).
+const GROQ_CHAT_MODEL = "openai/gpt-oss-120b";
 
 const NO_SEARCH_FALLBACK_TR =
   "Şu anda güncel haberler arasında arama yapamıyorum, kısa bir teknik sorun oluştu. Lütfen birazdan tekrar dener misin?";
@@ -154,6 +157,7 @@ export async function getAssistantReply(
       model: GROQ_CHAT_MODEL,
       temperature: 0.3,
       max_tokens: 500,
+      reasoning_effort: "low",
       messages: [
         { role: "system", content: systemPrompt },
         ...conversationForModel,
